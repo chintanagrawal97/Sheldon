@@ -1,4 +1,5 @@
 import React, { useState, useReducer, useMemo } from 'react';
+import shortid from 'shortid';
 
 import words from './words.json';
 
@@ -70,8 +71,69 @@ const Game = () => {
     const [minLength, setMinLength] = useState(GAME_CONFIG.easy.minLength);
     const [timeRemaining, setTimeRemaining] = useState(GAME_CONFIG.easy.timer);
 
-    
+    const numCorrect = useMemo(() => {
+        return state.words.filter((x) => x.correct).length;
+      }, [state.words]);
+      
+    const numIncorrect = useMemo(() => {
+    return state.words.filter((x) => !x.correct).length;
+    }, [state.words]);
 
+    const validateInput = useMemo(() => {
+        const alphaOnly = /^[A-Za-z]+$/;
+        const word = state.currentWord;
+
+    if (word === '') {
+        dispatch({ type: 'set_error', payload: '' });
+        return false;
+    }
+    if (word.length < minLength) {
+        dispatch({
+          type: 'set_error',
+          payload: `The word must be at least ${minLength} characters long.`,
+        });
+        return false;
+      }
+  
+      if (!word.match(alphaOnly)) {
+        dispatch({
+          type: 'set_error',
+          payload: 'The word must only contain letters, no numbers or special characters allowed.',
+        });
+        return false;
+      }
+  
+      dispatch({ type: 'set_error', payload: '' });
+      return true;
+    }, [state.currentWord, minLength]);
+
+    const formattedTimeRemaining = useMemo(() => {
+        const minutes = Math.floor(timeRemaining / 60)
+        .toString()
+        .padStart(2, '0');
+        const seconds = (timeRemaining - minutes * 60).toString().padStart(2, '0');
+        return `${minutes}:${seconds}`;
+    }, [timeRemaining]);
+    const checkWord = (e) => {
+        if (state.status !== 'playing') return;
+        if (e.target.disabled) return;
+    
+        const word = state.currentWord.trim().toLowerCase();
+        const correct = word in words && !state.words.some((x) => x.word === word);
+    
+        dispatch({
+          type: 'add_word',
+          payload: { word, correct, timeRemaining },
+        });
+      };
+
+      const handleKeyPress = (e) => {
+        if (e.key === 'Enter' && validateInput) {
+          checkWord(e);
+        }
+      };
+
+     
 
     return (
         <div>
@@ -161,7 +223,76 @@ const Game = () => {
             Start Game
           </button>
         </div>
-      
+
+
+
+        <div className={`${state.status === 'playing' ? '' : 'blur'}`}>
+        <div className="flex">
+          <input
+            className={`w-5/6 rounded border-2 px-6 py-3 focus:outline-none ${
+              state.error !== '' ? 'focus:border-red-600' : 'focus:border-gray-500'
+            }`}
+            type="text"
+            value={state.currentWord}
+            onKeyPress={handleKeyPress}
+            onChange={(x) => dispatch({ type: 'word_onchange', payload: x.target.value })}
+            placeholder="Enter a word here"
+          />
+          <button
+            className={`w-1/6 ml-6 rounded py-3 focus:outline-none ${
+              validateInput ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600'
+            }`}
+            type="button"
+            disabled={state.status !== 'playing' && !validateInput}
+            onClick={checkWord}
+          >
+            <span className="material-icons text-white font-bold align-middle">check</span>
+          </button>
+        </div>
+
+        {state.error !== '' ? (
+          <p className="text-xs text-red-600 mt-2 ml-6">{state.error}</p>
+        ) : (
+          <p className="text-xs text-gray-600 mt-2 ml-6">
+            {`You are on ${difficulty} difficulty, so you must enter a word with
+            at least ${minLength} characters.`}
+          </p>
+        )}
+
+        <div className="grid col-gap-4 grid-cols-2 md:grid-cols-3 mt-8">
+          <div className="shadow md:shadow-md text-center rounded p-6">
+            <h6 className="text-xs uppercase font-bold text-gray-500">No. of Correct Words</h6>
+            <h3 className="mt-2 font-bold text-green-600 text-4xl">{numCorrect}</h3>
+          </div>
+          <div className="shadow md:shadow-md text-center rounded p-6">
+            <h6 className="text-xs uppercase font-bold text-gray-500">No. of Incorrect Words</h6>
+            <h3 className="mt-2 font-bold text-red-600 text-4xl">{numIncorrect}</h3>
+          </div>
+          <div
+            className={`col-span-2 md:col-span-1 mt-4 md:mt-0
+          shadow md:shadow-md text-center rounded p-6 ${difficulty === 'lazy' && 'opacity-25'}`}
+          >
+            <h6 className="text-xs uppercase font-bold text-gray-500">Time Remaining</h6>
+            <h3 className="mt-2 font-bold text-blue-600 text-4xl">{formattedTimeRemaining}</h3>
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <h6 className="text-xs uppercase font-bold text-gray-500">History</h6>
+          <div id="history" className="flex flex-wrap mt-2">
+            {state.words.map((x) => (
+              <span
+                key={x.id}
+                className={`rounded-full px-4 py-1 my-1 text-white
+                text-sm mr-2 ${x.correct ? 'bg-green-600' : 'bg-gray-600'}`}
+              >
+                {x.word}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
        </div>           
   
          );
