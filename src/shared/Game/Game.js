@@ -64,12 +64,14 @@ const initialState = {
     }
   };
 
+  
 
 const Game = () => {
     const [state, dispatch] = useReducer(reducer, initialState);
     const [difficulty, setDifficulty] = useState('easy');
     const [minLength, setMinLength] = useState(GAME_CONFIG.easy.minLength);
     const [timeRemaining, setTimeRemaining] = useState(GAME_CONFIG.easy.timer);
+    let tickerRef = null;
 
     const numCorrect = useMemo(() => {
         return state.words.filter((x) => x.correct).length;
@@ -132,6 +134,36 @@ const Game = () => {
           checkWord(e);
         }
       };
+
+      const gameOver = () => {
+        dispatch({ type: 'game_status', payload: 'game_over' });
+        clearInterval(tickerRef);
+        tickerRef = null;
+        return 0;
+      };
+    
+      const startGame = () => {
+        dispatch({ type: 'game_status', payload: 'playing' });
+    
+        if (difficulty === 'lazy') return;
+    
+        tickerRef = setInterval(() => {
+          setTimeRemaining((prev) => {
+            if (prev > 1) return prev - 1;
+            return gameOver();
+          });
+        }, 1000);
+      };
+    
+      const restartGame = () => {
+        setDifficulty('easy');
+        setTimeRemaining(GAME_CONFIG.easy.timer);
+    
+        dispatch({ type: 'reset_game' });
+        dispatch({ type: 'game_status', payload: 'stopped' });
+      };
+    
+    
 
      
 
@@ -219,6 +251,7 @@ const Game = () => {
           <button
             type="button"
             className="mt-8 px-6 py-2 rounded bg-primary hover:bg-red-600"
+            onClick={startGame}
           >
             Start Game
           </button>
