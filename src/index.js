@@ -1,8 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import './index.css';
-import App from './App';
+
 import * as serviceWorker from './serviceWorker';
+import './tailwind/tailwind.css';
+import './index.css';
 
 import Navbar from './shared/Navbar/Navbar'
 import Game from './shared/Game/Game';
@@ -10,7 +11,7 @@ import Game from './shared/Game/Game';
 
 ReactDOM.render(
   <React.StrictMode>
-    <div >
+    <div className="container w-11/12" >
       <Navbar />
       <Game/>
     </div>

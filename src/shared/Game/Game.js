@@ -2,6 +2,7 @@ import React, { useState, useReducer, useMemo } from 'react';
 import shortid from 'shortid';
 
 import words from './words.json';
+import useFocus from '../../hooks/useFocus';
 
 const initialState = {
     error: '',
@@ -9,11 +10,10 @@ const initialState = {
     currentWord: '',
     words: [],
   };
-
   const GAME_CONFIG = {
     lazy: {
       key: 'lazy',
-      timer: 0,
+      timer: 15,
       minLength: 3,
     },
     easy: {
@@ -72,6 +72,7 @@ const Game = () => {
     const [minLength, setMinLength] = useState(GAME_CONFIG.easy.minLength);
     const [timeRemaining, setTimeRemaining] = useState(GAME_CONFIG.easy.timer);
     let tickerRef = null;
+    const [inputRef, setInputFocus, clearInputFocus] = useFocus();
 
     const numCorrect = useMemo(() => {
         return state.words.filter((x) => x.correct).length;
@@ -138,13 +139,14 @@ const Game = () => {
       const gameOver = () => {
         dispatch({ type: 'game_status', payload: 'game_over' });
         clearInterval(tickerRef);
+        clearInputFocus();
         tickerRef = null;
         return 0;
       };
     
       const startGame = () => {
         dispatch({ type: 'game_status', payload: 'playing' });
-    
+        setInputFocus();
         if (difficulty === 'lazy') return;
     
         tickerRef = setInterval(() => {
@@ -168,7 +170,77 @@ const Game = () => {
      
 
     return (
-        <div>
+       
+      <div className="my-6 py-6 md:py-12 md:px-8 rounded shadow-none md:shadow-xl relative">
+      <div className={`${state.status === 'playing' ? '' : 'blur'}`}>
+        <div className="flex">
+          <input
+            className={`w-5/6 rounded border-2 px-6 py-3 focus:outline-none ${
+              state.error !== '' ? 'focus:border-red-600' : 'focus:border-gray-500'
+            }`}
+            type="text"
+            ref={inputRef}
+            value={state.currentWord}
+            onKeyPress={handleKeyPress}
+            onChange={(x) => dispatch({ type: 'word_onchange', payload: x.target.value })}
+            placeholder="Enter a word here"
+          />
+          <button
+            className={`w-1/6 ml-6 rounded py-3 focus:outline-none ${
+              validateInput ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600'
+            }`}
+            type="button"
+            disabled={state.status !== 'playing' && !validateInput}
+            onClick={checkWord}
+          >
+            <span className="material-icons text-white font-bold align-middle">check</span>
+          </button>
+        </div>
+
+        {state.error !== '' ? (
+          <p className="text-xs text-red-600 mt-2 ml-6">{state.error}</p>
+        ) : (
+          <p className="text-xs text-gray-600 mt-2 ml-6">
+            {`You are on ${difficulty} difficulty, so you must enter a word with
+            at least ${minLength} characters.`}
+          </p>
+        )}
+
+        <div className="grid col-gap-4 grid-cols-2 md:grid-cols-3 mt-8">
+          <div className="shadow md:shadow-md text-center rounded p-6">
+            <h6 className="text-xs uppercase font-bold text-gray-500">No. of Correct Words</h6>
+            <h3 className="mt-2 font-bold text-green-600 text-4xl">{numCorrect}</h3>
+          </div>
+          <div className="shadow md:shadow-md text-center rounded p-6">
+            <h6 className="text-xs uppercase font-bold text-gray-500">No. of Incorrect Words</h6>
+            <h3 className="mt-2 font-bold text-red-600 text-4xl">{numIncorrect}</h3>
+          </div>
+          <div
+            className={`col-span-2 md:col-span-1 mt-4 md:mt-0
+          shadow md:shadow-md text-center rounded p-6 ${difficulty === 'lazy' && 'opacity-25'}`}
+          >
+            <h6 className="text-xs uppercase font-bold text-gray-500">Time Remaining</h6>
+            <h3 className="mt-2 font-bold text-blue-600 text-4xl">{formattedTimeRemaining}</h3>
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <h6 className="text-xs uppercase font-bold text-gray-500">History</h6>
+          <div id="history" className="flex flex-wrap mt-2">
+            {state.words.map((x) => (
+              <span
+                key={x.id}
+                className={`rounded-full px-4 py-1 my-1 text-white
+                text-sm mr-2 ${x.correct ? 'bg-green-600' : 'bg-gray-600'}`}
+              >
+                {x.word}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {state.status === 'stopped' && (
         <div
           id="overlay"
           style={{ backgroundColor: 'rgba(113, 128, 150, 0.9)' }}
@@ -256,78 +328,42 @@ const Game = () => {
             Start Game
           </button>
         </div>
+      )}
 
+      {state.status === 'game_over' && (
+        <div
+          id="overlay"
+          style={{ backgroundColor: 'rgba(113, 128, 150, 0.9)' }}
+          className="absolute inset-0 p-6 rounded text-white text-center
+          flex flex-col justify-center items-center"
+        >
+          <h2 className="font-bold text-3xl">Game Over!</h2>
+          <div className="md:w-1/2 mt-4">
+            <div className="grid col-gap-4 grid-cols-2">
+              <div className="shadow md:shadow-md text-center rounded p-6 bg-white">
+                <h6 className="text-xs uppercase font-bold text-gray-500">No. of Correct Words</h6>
+                <h3 className="mt-2 font-bold text-green-600 text-4xl">{numCorrect}</h3>
+              </div>
+              <div className="shadow md:shadow-md text-center rounded p-6 bg-white">
+                <h6 className="text-xs uppercase font-bold text-gray-500">
+                  No. of Incorrect Words
+                </h6>
+                <h3 className="mt-2 font-bold text-red-600 text-4xl">{numIncorrect}</h3>
+              </div>
+            </div>
+          </div>
 
-
-        <div className={`${state.status === 'playing' ? '' : 'blur'}`}>
-        <div className="flex">
-          <input
-            className={`w-5/6 rounded border-2 px-6 py-3 focus:outline-none ${
-              state.error !== '' ? 'focus:border-red-600' : 'focus:border-gray-500'
-            }`}
-            type="text"
-            value={state.currentWord}
-            onKeyPress={handleKeyPress}
-            onChange={(x) => dispatch({ type: 'word_onchange', payload: x.target.value })}
-            placeholder="Enter a word here"
-          />
           <button
-            className={`w-1/6 ml-6 rounded py-3 focus:outline-none ${
-              validateInput ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600'
-            }`}
             type="button"
-            disabled={state.status !== 'playing' && !validateInput}
-            onClick={checkWord}
+            className="mt-8 px-6 py-2 rounded bg-primary hover:bg-red-600"
+            onClick={restartGame}
           >
-            <span className="material-icons text-white font-bold align-middle">check</span>
+            Restart
           </button>
         </div>
-
-        {state.error !== '' ? (
-          <p className="text-xs text-red-600 mt-2 ml-6">{state.error}</p>
-        ) : (
-          <p className="text-xs text-gray-600 mt-2 ml-6">
-            {`You are on ${difficulty} difficulty, so you must enter a word with
-            at least ${minLength} characters.`}
-          </p>
-        )}
-
-        <div className="grid col-gap-4 grid-cols-2 md:grid-cols-3 mt-8">
-          <div className="shadow md:shadow-md text-center rounded p-6">
-            <h6 className="text-xs uppercase font-bold text-gray-500">No. of Correct Words</h6>
-            <h3 className="mt-2 font-bold text-green-600 text-4xl">{numCorrect}</h3>
-          </div>
-          <div className="shadow md:shadow-md text-center rounded p-6">
-            <h6 className="text-xs uppercase font-bold text-gray-500">No. of Incorrect Words</h6>
-            <h3 className="mt-2 font-bold text-red-600 text-4xl">{numIncorrect}</h3>
-          </div>
-          <div
-            className={`col-span-2 md:col-span-1 mt-4 md:mt-0
-          shadow md:shadow-md text-center rounded p-6 ${difficulty === 'lazy' && 'opacity-25'}`}
-          >
-            <h6 className="text-xs uppercase font-bold text-gray-500">Time Remaining</h6>
-            <h3 className="mt-2 font-bold text-blue-600 text-4xl">{formattedTimeRemaining}</h3>
-          </div>
-        </div>
-
-        <div className="mt-8">
-          <h6 className="text-xs uppercase font-bold text-gray-500">History</h6>
-          <div id="history" className="flex flex-wrap mt-2">
-            {state.words.map((x) => (
-              <span
-                key={x.id}
-                className={`rounded-full px-4 py-1 my-1 text-white
-                text-sm mr-2 ${x.correct ? 'bg-green-600' : 'bg-gray-600'}`}
-              >
-                {x.word}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-       </div>           
-  
+      )}
+    </div>        
+     
          );
   };
   
